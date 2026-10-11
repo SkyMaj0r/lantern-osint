@@ -1,0 +1,33 @@
+[project]
+name = "lantern"
+version = "0.1.0"
+description = "Modular OSINT aggregation tool — public, keyless/free-tier sources only."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.6",
+    "httpx>=0.27",
+    "typer>=0.12",
+    "rich>=13.7",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "aiosqlite>=0.20",
+    "sqlmodel>=0.0.16",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+]
+
+[project.scripts]
+lantern = "lantern.cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

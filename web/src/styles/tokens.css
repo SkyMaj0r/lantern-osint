@@ -1,0 +1,90 @@
+:root {
+  /* Color */
+  --color-paper: #FAFAFA;
+  --color-ink: #1D1D1F;
+  --color-gray-1: #F0F0F0;
+  --color-gray-2: #E0E0E0;
+  --color-gray-3: #C7C7C7;
+  --color-gray-4: #8E8E93;
+  --color-gray-5: #4A4A4D;
+
+  /* Green Lantern power-ring green — the one accent, used only for
+     interactive elements and high-confidence hits. --color-on-accent is
+     the text color placed ON TOP of a solid --color-accent fill (white in
+     light mode's deeper green, near-black in dark mode's brighter one) so
+     either direction stays WCAG-AA. */
+  --color-accent: #15803D;
+  --color-on-accent: #FFFFFF;
+  --glow-accent: 0 0 10px rgba(21, 128, 61, 0.25);
+
+  /* Sinestro-yellow for "checked, nothing here" — the in-theme opposite
+     of a green ring hit. Not an error color; same neutral meaning as the
+     old gray "no results" state, just on-brand. */
+  --color-warn: #92700C;
+  --glow-warn: 0 0 10px rgba(146, 112, 12, 0.2);
+
+  --color-divider: var(--color-gray-2);
+
+  /* Type */
+  --font-ui: Inter, -apple-system, "SF Pro", "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+  --line-height-base: 1.5;
+  --measure: 72ch;
+
+  /* Space (8px system) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+
+  /* Shape */
+  --radius: 5px;
+  --hairline: 1px solid var(--color-divider);
+
+  /* Motion */
+  --duration-quiet: 150ms;
+  --easing-standard: ease-out;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: #1A1A1A;
+    --color-ink: #F5F5F7;
+    --color-gray-1: #242424;
+    --color-gray-2: #333333;
+    --color-gray-3: #4A4A4D;
+    --color-gray-4: #8E8E93;
+    --color-gray-5: #C7C7C7;
+
+    --color-accent: #22C55E;
+    --color-on-accent: #0B1A0F;
+    --glow-accent: 0 0 16px rgba(34, 197, 94, 0.45);
+
+    --color-warn: #FACC15;
+    --glow-warn: 0 0 14px rgba(250, 204, 21, 0.3);
+
+    --color-divider: var(--color-gray-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-quiet: 0ms;
+  }
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: var(--line-height-base);
+}
