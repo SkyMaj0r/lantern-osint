@@ -1,193 +1,159 @@
-# Lantern
+<div align="center">
 
-Lantern is a modular OSINT aggregation tool. Give it a name, username,
-email, domain, IP, or company, and it classifies the input, dispatches the
-query to every relevant data-source module concurrently, and reports what
-each source found with its own confidence score and link back to the
-source.
+# 🏮 Lantern
 
-This README covers what's runnable today. For the full build log —
-architecture, why things are built the way they are, bugs found along the
-way, and what's still ahead — see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+### Modular OSINT aggregation — one query, every source, at once.
 
-## Ethics / legal
+Give Lantern a **name, username, email, domain, IP, or company**. It classifies
+the input, fans the query out to every relevant data source concurrently, and
+streams back what each one found — with a confidence score and a link home.
 
-Lantern reads and aggregates **public data only** — keyless or free-tier
-APIs, plus Tier-1 clearnet darknet intelligence (not live Tor access).
-Respect each source's Terms of Service and documented rate limits. Know
-your jurisdiction's law before using this against a person or
-organization without their consent. This tool does not bypass
-authentication, scrape private data, or access anything behind a login.
+![Python](https://img.shields.io/badge/Python-3.11+-2ea44f?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/API-FastAPI%20·%20SSE-2ea44f?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/Web-React%20·%20Vite%20·%20TS-2ea44f?logo=react&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-184%20passing-2ea44f)
+![Collectors](https://img.shields.io/badge/collectors-19-2ea44f)
+![Sources](https://img.shields.io/badge/data-public%20·%20keyless%2Ffree--tier-2ea44f)
 
-## What's implemented
+</div>
 
-| Area | Sources |
-|---|---|
-| Username | WhatsMyName (checks ~600+ sites) |
-| Email | XposedOrNot (breach check + analytics), HIBP Pwned Passwords (standalone, see below) |
-| Domain | RDAP (via IANA bootstrap), crt.sh (cert-transparency subdomains) |
-| Infra (IP/domain) | Shodan InternetDB + CVEDB enrichment (keyless), VirusTotal (IP/domain reputation, optional key), AbuseIPDB (IP abuse reports, optional key) |
-| Company | SEC EDGAR, GLEIF (LEI + parent relationships) |
-| Darknet (Tier-1, clearnet only) | Ransomware.live (victims/groups), Hudson Rock Cavalier (infostealer exposure) |
-| Search (PERSON/DOMAIN only) | Wikipedia (free, no key, ever) + SearchApi.io (optional key, Google-results search) |
+---
 
-Also implemented: a correlator (groups Findings into Entities, requiring
-a corroborating pivot — shared data field or identical cited URL — before
-merging same-named-but-different things; see
-[docs/ARCHITECTURE.md §4.9](docs/ARCHITECTURE.md#49-correlator-and-the-fastapi-sse-endpoint-phase-5)),
-a FastAPI SSE endpoint, and a React + Vite + TypeScript web UI (Green
-Lantern themed).
+> **Public data only.** Lantern reads keyless or free-tier APIs plus Tier-1
+> clearnet darknet intelligence (no live Tor). It never bypasses
+> authentication, scrapes private data, or touches anything behind a login.
+> It's SSRF-guarded, rate-limited, and cache-backed by design. **Respect each
+> source's Terms of Service, and know your jurisdiction's law before pointing
+> it at a person or organization.**
 
-Ahmia was evaluated and dropped for this version — see
-[docs/ARCHITECTURE.md §4.8](docs/ARCHITECTURE.md#48-darknet-phase-4--tier-1-clearnet-only-one-source-dropped)
-for why.
+## ✨ Highlights
 
-## Install
+- **🔀 One input, every applicable source.** Auto-classifies the query and runs
+  all matching modules concurrently — results stream in as each responds.
+- **🧩 19 collectors, zero stubs.** If a module is registered, it works
+  end-to-end against the real API. Most are keyless; the rest degrade
+  gracefully when their (free) key isn't set.
+- **🪪 Full-name → username pivot.** A legal name like `John Doe` is expanded
+  into likely handles (`johndoe`, `john.doe`, `jdoe`, …) and matched across
+  site-checks, GitHub, and Keybase — not just the company/person sources.
+- **🎯 Optional type override.** Know what you're searching? Force it
+  (`--type ip`, or the web dropdown) to skip the ambiguous fan-out — a
+  precision and quota win.
+- **🕸️ Correlator.** Groups findings into entities, requiring a corroborating
+  pivot (shared field or identical URL) before merging same-named-but-different
+  things.
+- **🟢 Green-Lantern-themed web UI.** Streaming results grouped by source, a
+  per-source status row, relationship graph, and a one-click **Copy JSON**.
 
-Requires Python 3.11+.
+## 🗺️ How it works
+
+```mermaid
+flowchart LR
+    Q["Query<br/>(name · user · email<br/>· domain · IP · company)"] --> C{classify}
+    C -->|auto-detect<br/>or --type override| D[Dispatcher]
+    D -->|concurrent fan-out| M["Collectors<br/>(only matching types)"]
+    M --> R[Correlator]
+    R --> O["Findings + entity graph<br/>(CLI · SSE · web UI)"]
+```
+
+## 🔭 Collectors
+
+| Entity | Sources | Key? |
+|---|---|---|
+| **Username / Person** | `whatsmyname` (~600 sites) · `github_users` · `keybase` — all three also accept a full **person name** | keyless |
+| **Email** | `gravatar` (→ display name + linked socials) · `xposedornot` (breaches) · HIBP Pwned Passwords *(standalone)* | keyless |
+| **Domain** | `rdap` (registration) · `crtsh` (cert-transparency subdomains) · `dns-doh` (live A/AAAA/MX/NS/TXT) · `wayback` (first/last archive capture) | keyless |
+| **IP / Infra** | `shodan-internetdb` (+ CVEDB) · `ripestat` (prefix/ASN/owner) · `virustotal` · `abuseipdb` | keyless · keyless · free key · free key |
+| **Company** | `sec-edgar` · `gleif` (LEI + parent relationships) | keyless |
+| **Darknet** *(Tier-1, clearnet)* | `ransomware-live` (victims/groups) · `hudson-rock` (infostealer exposure) | keyless |
+| **Search** *(PERSON/DOMAIN)* | `wikipedia` (never needs a key) · `searchapi` (Google results) | keyless · free key |
+
+<sub>Full build log, design rationale, and the sources evaluated-and-dropped (Brave, DuckDuckGo, BGPView, GitLab, Ahmia, Censys) live in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.</sub>
+
+## 🚀 Quick start
 
 ```bash
+# 1. Install (Python 3.11+)
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
+
+# 2. Configure
+cp .env.example .env         # set CONTACT_EMAIL (required) + API_BEARER_TOKEN
+
+# 3. Search
+.venv/bin/lantern search "torvalds"
 ```
 
-## Set up `.env`
-
-Copy the example and fill it in:
+### CLI
 
 ```bash
-cp .env.example .env
+lantern search "example.com"              # auto-detected as a domain
+lantern search "John Doe" --type person   # force the type, skip the rest
+lantern search "8.8.8.8" --source virustotal   # restrict collectors (repeatable)
+
+# Standalone utilities (not part of the entity pipeline)
+lantern check-password "some password"    # HIBP k-anonymity — only a hash prefix leaves your machine
+lantern darknet recent --limit 20         # latest disclosed ransomware victims
+lantern darknet groups                    # known ransomware groups
 ```
 
-| Variable | Required? | Used for |
-|---|---|---|
-| `CONTACT_EMAIL` | **Required** | Sent in the User-Agent on every outbound request. Several sources (SEC EDGAR explicitly) return `403` without a real one. |
-| `API_BEARER_TOKEN` | **Required to run the API** | Authenticates every API request, even local ones (the whole API, not just `/search` — the auto docs routes are disabled rather than left open). The CLI never reads this. |
-| `VIRUSTOTAL_API_KEY` | Optional | Enables `virustotal` (IP/domain reputation). Free community key, no card — [virustotal.com/gui/join-us](https://www.virustotal.com/gui/join-us). |
-| `HUDSONROCK_API_KEY` | Optional | Unused — the Hudson Rock module uses Cavalier's free, keyless community endpoints. Kept here in case that ever changes. |
-| `SEARCHAPI_API_KEY` | Optional | Enables `searchapi` (Google-results search via SearchApi.io). Free tier: **100 searches total, one-time trial — does not reset monthly** — [searchapi.io](https://www.searchapi.io/). |
-| `ABUSEIPDB_API_KEY` | Optional | Enables `abuseipdb` (IP abuse/reputation reports). Free tier: 1,000 checks/day, resets 00:00 UTC — [abuseipdb.com](https://www.abuseipdb.com/). |
-| `CACHE_PATH` | Optional (default `lantern_cache.db`) | SQLite file for the per-source TTL cache. |
+A query is classified automatically (email / IP / domain, or — if ambiguous —
+username, person *and* company together), then every module supporting that
+type runs concurrently. `--type` forces a single type; `--source` restricts to
+named collectors.
 
-`wikipedia` needs no key at all, ever — it's always active for PERSON/DOMAIN queries.
-
-Brave Search and DuckDuckGo were built, then removed — Brave's free Search
-API tier no longer exists (metered billing now, real card required), and
-DuckDuckGo's Instant Answer API was too narrow to be worth keeping
-alongside VirusTotal/AbuseIPDB/SearchApi.io. See
-[docs/ARCHITECTURE.md §4.14](docs/ARCHITECTURE.md) for the full story.
-
-## Run the CLI
+### API
 
 ```bash
-lantern search "torvalds"
-lantern search "example.com"
-lantern search "8.8.8.8"
-lantern search "Apple Inc"
-lantern search "alice@example.com"
-```
+.venv/bin/python -m lantern.api.app        # binds 127.0.0.1:8000
 
-A query is classified automatically (email / IP / domain, or — if
-ambiguous — username, person, *and* company all at once), then every
-module that supports that type runs concurrently. Results stream in as
-each source responds.
-
-Restrict which collectors run with `--source` (repeatable):
-
-```bash
-lantern search "8.8.8.8" --source virustotal
-```
-
-Skip auto-detection and force the input type with `--type`
-(`email`/`ip`/`domain`/`username`/`person`/`company`) — useful when a value
-is ambiguous and you already know what it is, so only that type's modules
-run:
-
-```bash
-lantern search "John Doe" --type person
-```
-
-Standalone utilities (not part of the entity-search pipeline — see the
-architecture doc for why):
-
-```bash
-lantern check-password "some password"   # HIBP Pwned Passwords, k-anonymity only
-lantern darknet recent --limit 20        # Latest disclosed ransomware victims
-lantern darknet groups                   # Known ransomware groups
-```
-
-## Run the API
-
-```bash
-.venv/bin/python -m lantern.api.app
-```
-
-Binds to `127.0.0.1:8000` by default. One endpoint:
-
-```bash
 curl "http://127.0.0.1:8000/search?q=8.8.8.8" \
   -H "Authorization: Bearer $API_BEARER_TOKEN"
 ```
 
-Streams Server-Sent Events — a `finding` event per result as each module
-responds, then a final `done` event with the correlated entity graph
-(`{"nodes": [...], "edges": [...]}`). Every route requires the bearer
-token from `.env`, including local requests; there's no interactive
-`/docs` page by design (see the architecture doc for why).
+Streams Server-Sent Events — a `finding` event per result, then a final `done`
+event carrying the correlated entity graph (`{"nodes": [...], "edges": [...]}`).
+Every route requires the bearer token, even locally; there's no interactive
+`/docs` page by design. Add `&type=…` or `&sources=…` to scope a search.
 
-## Run the web UI
-
-Requires Node.js. The API must already be running (see above) — the web
-UI is a pure client that talks only to it.
+### Web UI
 
 ```bash
-cd web
-npm install
-npm run dev
+cd web && npm install && npm run dev       # http://localhost:5173 (API must be running)
 ```
 
-Opens at `http://localhost:5173`. On first load, click **Settings** (top
-right) and set the API URL (defaults to `http://127.0.0.1:8000`) and the
-same bearer token from your `.env` — stored only in that browser's
-`localStorage`, never sent anywhere but your own local API.
+Open **Settings** → set the API URL + the same bearer token (stored only in
+that browser's `localStorage`). From there you can also pick an **input type**,
+and toggle any collector on/off under **Modules**.
 
-The same Settings panel lists every registered collector as a **Modules**
-checkbox list — uncheck any you don't want running, e.g. "only
-`virustotal`, skip the search engines." The choice is per-browser and
-applies to every search until changed again; a collector added later
-shows up checked (enabled) by default.
+## 🔑 Configuration
 
-Single search box, results stream in grouped by source as each module
-responds, with a per-source pending/found/no-results chip row above them.
-A **Relationships** section appears when the correlator's entity graph
-has any edges. **Copy JSON** copies the raw findings + graph to the
-clipboard. Light/dark follows the OS; keyboard focus rings and mobile
-layout are both handled (see `web/src/styles/tokens.css` for the design
-tokens, and [docs/ARCHITECTURE.md §4.10](docs/ARCHITECTURE.md#410-brave-search-and-the-web-ui-phase-6)
-for how the SSE client works around `EventSource` not supporting auth
-headers).
+| Variable | Required? | Purpose |
+|---|---|---|
+| `CONTACT_EMAIL` | **Yes** | Sent in the User-Agent on every request — several sources (e.g. SEC EDGAR) `403` without a real one. |
+| `API_BEARER_TOKEN` | **For the API** | Authenticates every API request, even local ones. The CLI never reads it. |
+| `VIRUSTOTAL_API_KEY` | Optional | Enables `virustotal`. Free community key, no card — [join](https://www.virustotal.com/gui/join-us). |
+| `ABUSEIPDB_API_KEY` | Optional | Enables `abuseipdb`. Free tier 1,000 checks/day — [abuseipdb.com](https://www.abuseipdb.com/). |
+| `SEARCHAPI_API_KEY` | Optional | Enables `searchapi`. Free tier **100 searches total, one-time — does not reset** — [searchapi.io](https://www.searchapi.io/). |
+| `HUDSONROCK_API_KEY` | Optional | Unused — Hudson Rock uses keyless community endpoints. Kept in case that changes. |
+| `CACHE_PATH` | Optional | SQLite TTL cache file (default `lantern_cache.db`). |
 
-## Run the tests
+Every other collector — including `gravatar`, `dns-doh`, `wayback`, `ripestat`,
+`github_users`, `keybase`, and `wikipedia` — is **keyless** and always active.
 
-Backend:
+## 🧪 Tests
 
 ```bash
-.venv/bin/pytest tests/ -v
+.venv/bin/pytest tests/ -v          # 184 tests, no network — all HTTP is mocked (respx)
+cd web && npm run build && npm run lint   # type-check + production build + lint
 ```
 
-184 tests, no network required — every collector is tested against
-mocked HTTP (`respx`), with the SSRF guard tested separately and
-exhaustively on its own, and the correlator tested against synthetic
-ambiguous-name scenarios since live data rarely exercises that path on
-its own.
+Every collector is tested against mocked HTTP; the SSRF guard and correlator
+are each tested exhaustively on their own. No frontend test suite yet (verified
+by driving the real stack end to end).
 
-Web UI:
+---
 
-```bash
-cd web && npm run build   # type-checks + production build
-npm run lint
-```
-
-No frontend test suite yet (component tests would need Vitest +
-Testing Library, not set up in this version) — verified instead by
-running the real API and driving the real UI end to end.
+<div align="center">
+<sub>A coursework OSINT project — built public-only, keyless-first, and ToS-respecting.</sub>
+</div>
